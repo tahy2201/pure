@@ -118,6 +118,34 @@ prompt_pure_set_colors() {
 	done
 }
 
+# 1.環境変数 AWS_PROFILE から、プロンプトに表示する文字列を作るフック関数を定義
+prompt_awsprof_precmd() {
+  profile="${AWS_ACCOUNT_NAME}"
+  if [[ -z "${profile}" ]]; then
+     _prompt_awsprof=""
+  else
+     _prompt_awsprof="%F{yellow}${AWS_ACCOUNT_NAME}:${AWS_ACCOUNT_ROLE}%f"
+  fi
+}
+
+prompt_kubectl_context() {
+	k_getconf=`kubectl config get-contexts | grep '*'`
+	k_context=`echo $k_getconf | awk '{print $2}'`
+	k_ns=`echo $k_getconf | awk '{print $5}'`
+
+	if [[ -z "${k_getconf}" ]]; then
+     	_k_info=""
+	else
+		_k_info="%F{cyan}${k_context} [${k_ns}]%f"
+	fi
+}
+
+prompt_date() {
+	now_date=`date "+%Y-%m-%d %H:%M:%S"`
+
+	_n_date="%F{blue}[%f${now_date}%F{blue}]%f "
+}
+
 prompt_pure_preprompt_render() {
 	setopt localoptions noshwordsplit
 
@@ -139,8 +167,17 @@ prompt_pure_preprompt_render() {
 	# Username and machine, if applicable.
 	[[ -n $prompt_pure_state[username] ]] && preprompt_parts+=($prompt_pure_state[username])
 
+	# now date
+	preprompt_parts+='$_n_date'
+
 	# Set the path.
 	preprompt_parts+=('%F{${prompt_pure_colors[path]}}%~%f')
+
+	# add AWS profile
+	preprompt_parts+='$_prompt_awsprof'
+
+	# add kubectl info
+	preprompt_parts+='$_k_info'
 
 	# Git branch and dirty status info.
 	typeset -gA prompt_pure_vcs_info
@@ -831,6 +868,9 @@ prompt_pure_setup() {
 
 	add-zsh-hook precmd prompt_pure_precmd
 	add-zsh-hook preexec prompt_pure_preexec
+	add-zsh-hook precmd prompt_date
+	add-zsh-hook precmd prompt_awsprof_precmd
+	add-zsh-hook precmd prompt_kubectl_context
 
 	prompt_pure_state_setup
 
